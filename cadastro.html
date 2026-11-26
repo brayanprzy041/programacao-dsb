@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro de Clientes - JSON</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .grupo {
+            margin-bottom: 12px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 14px;
+            margin: 5px 5px 5px 0;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            background: #e9ecef;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        li:hover {
+            background: #d3d9df;
+        }
+        dialog {
+            border: none;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+    // Array em memória para simular o conteúdo do arquivo clientes.json
+    let bancoClientes = [];
+
+    // Requisito: Limpeza do Arquivo no início do programa
+    function limpar_arquivo() {
+        bancoClientes = [];
+        localStorage.removeItem("clientes.json");
+        console.log("Arquivo clientes.json limpo no início do programa.");
+    }
+
+    // Requisito: Classe Cliente com atributos nome e email, e método toJSON()
+    class Cliente {
+        constructor(id, nome, email) {
+            this.id = id;
+            this.nome = nome;
+            this.email = email;
+        }
+
+        toJSON() {
+            return {
+                id: this.id,
+                nome: this.nome,
+                email: this.email
+            };
+        }
+    }
+
+    // Requisito: Inclusão de Clientes
+    function incluir_cliente(nome, email) {
+        const novoId = bancoClientes.length + 1;
+        const cliente = new Cliente(novoId, nome, email);
+        bancoClientes.push(cliente.toJSON());
+        
+        // Atualiza o armazenamento local e atualiza a lista na tela
+        localStorage.setItem("clientes.json", JSON.stringify(bancoClientes, null, 2));
+        listar_clientes();
+    }
+
+    // Requisito: Salvar Clientes em um arquivo clientes.json (gera download)
+    function salvar_cliente() {
+        const dadosJSON = JSON.stringify(bancoClientes, null, 2);
+        const blob = new Blob([dadosJSON], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "clientes.json";
+        link.click();
+
+        URL.revokeObjectURL(url);
+    }
+
+    // Requisito: Entrada de Dados (solicitar dados e incluir múltiplos clientes)
+    function cadastrar_clientes() {
+        let continuar = true;
+        while (continuar) {
+            const nome = prompt("Digite o nome do cliente:");
+            if (!nome) break;
+
+            const email = prompt("Digite o e-mail do cliente:");
+            if (!email) break;
+
+            incluir_cliente(nome, email);
+            continuar = confirm("Deseja cadastrar outro cliente?");
+        }
+    }
+
+    // Requisito: Listagem de Clientes (exibir todos e preencher formulário ao clicar)
+    function listar_clientes() {
+        const ul = document.getElementById("listaClientes");
+        ul.innerHTML = "";
+
+        bancoClientes.forEach((cliente) => {
+            const li = document.createElement("li");
+            li.textContent = `ID: ${cliente.id} | Nome: ${cliente.nome} | E-mail: ${cliente.email}`;
+            
+            // Ao clicar no cliente da lista, preenche os campos do formulário
+            li.onclick = function() {
+                document.getElementById("campoId").value = cliente.id;
+                document.getElementById("campoNome").value = cliente.nome;
+                document.getElementById("campoEmail").value = cliente.email;
+            };
+
+            ul.appendChild(li);
+        });
+    }
+
+    // Função auxiliar para buscar cliente na Caixa de Diálogo
+    function buscar_cliente() {
+        const termo = document.getElementById("termoBusca").value.trim().toLowerCase();
+        const resultadoDiv = document.getElementById("resultadoBusca");
+
+        const encontrado = bancoClientes.find(c => 
+            c.id.toString() === termo || c.nome.toLowerCase().includes(termo)
+        );
+
+        if (encontrado) {
+            resultadoDiv.innerHTML = `<p><strong>Encontrado:</strong> ID ${encontrado.id} - ${encontrado.nome} (${encontrado.email})</p>`;
+            // Preenche o formulário também ao encontrar
+            document.getElementById("campoId").value = encontrado.id;
+            document.getElementById("campoNome").value = encontrado.nome;
+            document.getElementById("campoEmail").value = encontrado.email;
+        } else {
+            resultadoDiv.innerHTML = `<p style="color:red;">Cliente não encontrado.</p>`;
+        }
+    }
+
+    // Requisito: Interface gráfica criada usando funções do JavaScript
+    function criarInterfaceGrafica() {
+        const app = document.getElementById("app");
+
+        const container = document.createElement("div");
+        container.className = "container";
+
+        container.innerHTML = `
+            <h2>Cadastro de Clientes</h2>
+            <div class="grupo">
+                <label for="campoId">Código (ID):</label>
+                <input type="text" id="campoId" readonly placeholder="Gerado automaticamente">
+            </div>
+            <div class="grupo">
+                <label for="campoNome">Nome:</label>
+                <input type="text" id="campoNome" placeholder="Digite o nome">
+            </div>
+            <div class="grupo">
+                <label for="campoEmail">E-mail:</label>
+                <input type="email" id="campoEmail" placeholder="Digite o e-mail">
+            </div>
+
+            <button id="btnIncluir">Incluir Cliente</button>
+            <button id="btnMultiplos">Cadastrar Múltiplos (Prompt)</button>
+            <button id="btnSalvar">Baixar clientes.json</button>
+            <button id="btnAbrirBusca">Buscar Cliente</button>
+
+            <h3>Clientes Salvos (Clique para preencher o formulário)</h3>
+            <ul id="listaClientes"></ul>
+
+            <dialog id="dialogBusca">
+                <h3>Buscar Cliente</h3>
+                <div class="grupo">
+                    <label for="termoBusca">Digite o Nome ou Código (ID):</label>
+                    <input type="text" id="termoBusca">
+                </div>
+                <button id="btnExecutarBusca">Pesquisar</button>
+                <button id="btnFecharBusca" style="background-color:#6c757d;">Fechar</button>
+                <div id="resultadoBusca" style="margin-top:10px;"></div>
+            </dialog>
+        `;
+
+        app.appendChild(container);
+
+        // Eventos dos botões
+        document.getElementById("btnIncluir").onclick = () => {
+            const nome = document.getElementById("campoNome").value;
+            const email = document.getElementById("campoEmail").value;
+            if (nome && email) {
+                incluir_cliente(nome, email);
+                document.getElementById("campoId").value = "";
+                document.getElementById("campoNome").value = "";
+                document.getElementById("campoEmail").value = "";
+            } else {
+                alert("Preencha nome e e-mail.");
+            }
+        };
+
+        document.getElementById("btnMultiplos").onclick = cadastrar_clientes;
+        document.getElementById("btnSalvar").onclick = salvar_cliente;
+
+        const dialog = document.getElementById("dialogBusca");
+        document.getElementById("btnAbrirBusca").onclick = () => dialog.showModal();
+        document.getElementById("btnFecharBusca").onclick = () => dialog.close();
+        document.getElementById("btnExecutarBusca").onclick = buscar_cliente;
+    }
+
+    // Inicialização do programa
+    window.onload = function() {
+        limpar_arquivo();
+        criarInterfaceGrafica();
+        listar_clientes();
+    };
+</script>
+
+</body>
+</html>
